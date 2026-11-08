@@ -1,0 +1,7 @@
+{
+  "entity.otterfall.otter": "Otter",
+  "item.otterfall.otter_spawn_egg": "Otter Spawn Egg",
+  "subtitles.otterfall.entity.otter.ambient": "Otter chirps",
+  "subtitles.otterfall.entity.otter.hurt": "Otter hurts",
+  "subtitles.otterfall.entity.otter.death": "Otter dies"
+}

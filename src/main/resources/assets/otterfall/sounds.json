@@ -1,0 +1,21 @@
+{
+  "entity.otter.ambient": {
+    "subtitle": "subtitles.otterfall.entity.otter.ambient",
+    "sounds": [
+      { "name": "entity.cat.stray_ambient", "type": "event", "pitch": 1.9, "volume": 0.4 },
+      { "name": "entity.axolotl.idle_air", "type": "event", "pitch": 1.8, "volume": 0.6 }
+    ]
+  },
+  "entity.otter.hurt": {
+    "subtitle": "subtitles.otterfall.entity.otter.hurt",
+    "sounds": [
+      { "name": "entity.cat.hurt", "type": "event", "pitch": 1.7, "volume": 0.6 }
+    ]
+  },
+  "entity.otter.death": {
+    "subtitle": "subtitles.otterfall.entity.otter.death",
+    "sounds": [
+      { "name": "entity.cat.death", "type": "event", "pitch": 1.7, "volume": 0.6 }
+    ]
+  }
+}

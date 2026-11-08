@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="otterfall"
+version="0.1.0"
+displayName="Otterfall"
+description='''
+Una sola criatura: la nutria. Adorable de dia... y no tanto de noche.
+Fase 1: nutria normal con modelo y animaciones GeckoLib.
+'''
+
+[[dependencies.otterfall]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.otterfall]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.otterfall]]
+    modId="geckolib"
+    mandatory=true
+    versionRange="[4.4,)"
+    ordering="AFTER"
+    side="BOTH"
