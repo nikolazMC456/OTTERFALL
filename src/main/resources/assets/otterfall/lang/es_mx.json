@@ -3,5 +3,11 @@
   "item.otterfall.otter_spawn_egg": "Huevo generador de nutria",
   "subtitles.otterfall.entity.otter.ambient": "La nutria chilla",
   "subtitles.otterfall.entity.otter.hurt": "La nutria se queja",
-  "subtitles.otterfall.entity.otter.death": "La nutria muere"
+  "subtitles.otterfall.entity.otter.death": "La nutria muere",
+  "subtitles.otterfall.entity.otter_horror.ambient": "La nutria abismal respira",
+  "subtitles.otterfall.entity.otter_horror.hurt": "La nutria abismal gruñe",
+  "subtitles.otterfall.entity.otter_horror.death": "La nutria abismal muere",
+  "subtitles.otterfall.entity.otter_horror.screech": "La nutria abismal chilla",
+  "subtitles.otterfall.entity.otter_horror.jaw": "Una mandíbula chasquea",
+  "subtitles.otterfall.entity.otter_horror.step": "Extremidades que se arrastran"
 }

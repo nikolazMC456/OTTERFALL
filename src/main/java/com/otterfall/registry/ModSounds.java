@@ -15,6 +15,13 @@ public class ModSounds {
     public static final RegistryObject<SoundEvent> OTTER_HURT = register("entity.otter.hurt");
     public static final RegistryObject<SoundEvent> OTTER_DEATH = register("entity.otter.death");
 
+    public static final RegistryObject<SoundEvent> HORROR_AMBIENT = register("entity.otter_horror.ambient");
+    public static final RegistryObject<SoundEvent> HORROR_HURT = register("entity.otter_horror.hurt");
+    public static final RegistryObject<SoundEvent> HORROR_DEATH = register("entity.otter_horror.death");
+    public static final RegistryObject<SoundEvent> HORROR_SCREECH = register("entity.otter_horror.screech");
+    public static final RegistryObject<SoundEvent> HORROR_JAW = register("entity.otter_horror.jaw");
+    public static final RegistryObject<SoundEvent> HORROR_STEP = register("entity.otter_horror.step");
+
     private static RegistryObject<SoundEvent> register(String name) {
         return SOUNDS.register(name, () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(Otterfall.MODID, name)));
     }

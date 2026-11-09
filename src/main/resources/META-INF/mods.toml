@@ -4,11 +4,11 @@ license="All Rights Reserved"
 
 [[mods]]
 modId="otterfall"
-version="0.1.0"
+version="0.2.0"
 displayName="Otterfall"
 description='''
 Una sola criatura: la nutria. Adorable de dia... y no tanto de noche.
-Fase 1: nutria normal con modelo y animaciones GeckoLib.
+Fase 2: nutria normal y forma monstruosa (Nutria Abismal).
 '''
 
 [[dependencies.otterfall]]

@@ -1,5 +1,7 @@
 package com.otterfall.entity;
 
+import com.otterfall.entity.ai.FormGate;
+import com.otterfall.entity.ai.OtterHorrorActionGoal;
 import com.otterfall.entity.ai.OtterIdleActionGoal;
 import com.otterfall.registry.ModEntities;
 import com.otterfall.registry.ModSounds;
@@ -16,8 +18,13 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.SmoothSwimmingLookControl;
@@ -25,11 +32,13 @@ import net.minecraft.world.entity.ai.control.SmoothSwimmingMoveControl;
 import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.RandomSwimmingGoal;
 import net.minecraft.world.entity.ai.goal.TemptGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.animal.Animal;
@@ -51,10 +60,12 @@ import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
+import java.util.UUID;
+
 /**
- * Nutria (forma normal). Semiacuatica: camina por tierra y nada/se sumerge.
- * Fase 1: modelo, animaciones y comportamiento diurno. Los estados y la memoria
- * de agresores se anadiran en las fases siguientes.
+ * Nutria. Una sola entidad con dos formas (normal y monstruosa) que comparten
+ * IA base, atributos y datos sincronizados; el modelo cambia segun {@link OtterState}.
+ * Fase 2: forma monstruosa con modelo, animaciones, sonidos y comportamiento basico.
  */
 public class OtterEntity extends Animal implements GeoEntity {
 
@@ -63,16 +74,26 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final EntityDataAccessor<Integer> DATA_STATE =
             SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.INT);
 
+    private static final UUID HORROR_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a01");
+
+    // forma normal
     private static final RawAnimation ANIM_IDLE = RawAnimation.begin().thenLoop("animation.otter.idle");
     private static final RawAnimation ANIM_WALK = RawAnimation.begin().thenLoop("animation.otter.walk");
     private static final RawAnimation ANIM_RUN = RawAnimation.begin().thenLoop("animation.otter.run");
     private static final RawAnimation ANIM_SWIM = RawAnimation.begin().thenLoop("animation.otter.swim");
     private static final RawAnimation ANIM_SWIM_IDLE = RawAnimation.begin().thenLoop("animation.otter.swim_idle");
+    // forma monstruosa
+    private static final RawAnimation H_IDLE = RawAnimation.begin().thenLoop("animation.otter_horror.idle");
+    private static final RawAnimation H_CRAWL = RawAnimation.begin().thenLoop("animation.otter_horror.crawl");
+    private static final RawAnimation H_RUN = RawAnimation.begin().thenLoop("animation.otter_horror.run");
+    private static final RawAnimation H_SWIM = RawAnimation.begin().thenLoop("animation.otter_horror.swim");
+    private static final RawAnimation H_SWIM_IDLE = RawAnimation.begin().thenLoop("animation.otter_horror.swim_idle");
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     private boolean wasInWater = false;
     private boolean wantsShake = false;
+    private int actionTicks = 0;
 
     public OtterEntity(EntityType<? extends OtterEntity> type, Level level) {
         super(type, level);
@@ -100,6 +121,42 @@ public class OtterEntity extends Animal implements GeoEntity {
         return shore && level.getRawBrightness(pos, 0) > 8;
     }
 
+    // ------------------------------------------------------------------ formas
+
+    public boolean isHorrorForm() {
+        return getOtterState().usesHorrorModel();
+    }
+
+    public boolean isNormalForm() {
+        return !isHorrorForm();
+    }
+
+    @Override
+    public EntityDimensions getDimensions(Pose pose) {
+        EntityDimensions base = super.getDimensions(pose);
+        return isHorrorForm() ? base.scale(1.15F, 1.4F) : base;
+    }
+
+    @Override
+    public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
+        if (DATA_STATE.equals(key)) {
+            this.refreshDimensions();
+        }
+        super.onSyncedDataUpdated(key);
+    }
+
+    private void applyFormAttributes(boolean horror) {
+        AttributeInstance damage = this.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (damage == null) {
+            return;
+        }
+        damage.removeModifier(HORROR_DAMAGE_ID);
+        if (horror) {
+            damage.addTransientModifier(new AttributeModifier(HORROR_DAMAGE_ID, "Horror damage", 5.0D,
+                    AttributeModifier.Operation.ADDITION));
+        }
+    }
+
     // ------------------------------------------------------------------ IA
 
     @Override
@@ -109,11 +166,19 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(1, new PanicGoal(this, 1.5D));
-        this.goalSelector.addGoal(2, new BreedGoal(this, 1.0D));
-        this.goalSelector.addGoal(3, new TemptGoal(this, 1.1D, Ingredient.of(ItemTags.FISHES), false));
-        this.goalSelector.addGoal(4, new FollowParentGoal(this, 1.1D));
-        this.goalSelector.addGoal(5, new OtterIdleActionGoal(this));
+        // ---- forma normal
+        this.goalSelector.addGoal(1, new FormGate(new PanicGoal(this, 1.5D), this::isNormalForm));
+        this.goalSelector.addGoal(2, new FormGate(new BreedGoal(this, 1.0D), this::isNormalForm));
+        this.goalSelector.addGoal(3, new FormGate(
+                new TemptGoal(this, 1.1D, Ingredient.of(ItemTags.FISHES), false), this::isNormalForm));
+        this.goalSelector.addGoal(4, new FormGate(new FollowParentGoal(this, 1.1D), this::isNormalForm));
+        this.goalSelector.addGoal(5, new FormGate(new OtterIdleActionGoal(this), this::isNormalForm));
+        // ---- forma monstruosa
+        this.goalSelector.addGoal(2, new FormGate(new MeleeAttackGoal(this, 1.3D, false), this::isHorrorForm));
+        this.goalSelector.addGoal(3, new FormGate(new OtterHorrorActionGoal(this), this::isHorrorForm));
+        this.targetSelector.addGoal(1, new FormGate(
+                new NearestAttackableTargetGoal<>(this, Player.class, true), this::isHorrorForm));
+        // ---- comunes
         this.goalSelector.addGoal(6, new RandomSwimmingGoal(this, 1.0D, 80));
         this.goalSelector.addGoal(7, new RandomStrollGoal(this, 0.9D, 120));
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -136,14 +201,32 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     @Override
+    public boolean doHurtTarget(Entity target) {
+        boolean hit = super.doHurtTarget(target);
+        if (hit && isHorrorForm()) {
+            playAction(OtterAction.HORROR_BITE, 12);
+        }
+        return hit;
+    }
+
+    /** Reproduce una accion durante un numero fijo de ticks (solo servidor). */
+    public void playAction(OtterAction action, int ticks) {
+        this.setAction(action);
+        this.actionTicks = ticks;
+    }
+
+    @Override
     public void tick() {
         super.tick();
         if (!this.level().isClientSide) {
             boolean inWater = this.isInWater();
-            if (this.wasInWater && !inWater && this.onGround() && this.random.nextInt(3) == 0) {
+            if (this.wasInWater && !inWater && this.onGround() && isNormalForm() && this.random.nextInt(3) == 0) {
                 this.wantsShake = true;
             }
             this.wasInWater = inWater;
+            if (this.actionTicks > 0 && --this.actionTicks == 0) {
+                this.setAction(OtterAction.NONE);
+            }
         }
     }
 
@@ -153,6 +236,13 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     public void clearShake() {
         wantsShake = false;
+    }
+
+    /** Velocidad horizontal real (bloques/tick), valida tambien en el cliente. */
+    public double horizontalSpeed() {
+        double dx = this.getX() - this.xo;
+        double dz = this.getZ() - this.zo;
+        return Math.sqrt(dx * dx + dz * dz);
     }
 
     // ------------------------------------------------------ datos sincronizados
@@ -178,6 +268,14 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     public void setOtterState(OtterState state) {
         this.entityData.set(DATA_STATE, state.ordinal());
+        if (!this.level().isClientSide) {
+            applyFormAttributes(state.usesHorrorModel());
+            this.actionTicks = 0;
+            this.setAction(OtterAction.NONE);
+            if (!state.usesHorrorModel()) {
+                this.setTarget(null);
+            }
+        }
     }
 
     @Override
@@ -195,23 +293,32 @@ public class OtterEntity extends Animal implements GeoEntity {
     // ------------------------------------------------------------- sonidos
 
     @Override
+    public int getAmbientSoundInterval() {
+        return isHorrorForm() ? 200 : 80;
+    }
+
+    @Override
     protected SoundEvent getAmbientSound() {
-        return ModSounds.OTTER_AMBIENT.get();
+        return isHorrorForm() ? ModSounds.HORROR_AMBIENT.get() : ModSounds.OTTER_AMBIENT.get();
     }
 
     @Override
     protected SoundEvent getHurtSound(DamageSource source) {
-        return ModSounds.OTTER_HURT.get();
+        return isHorrorForm() ? ModSounds.HORROR_HURT.get() : ModSounds.OTTER_HURT.get();
     }
 
     @Override
     protected SoundEvent getDeathSound() {
-        return ModSounds.OTTER_DEATH.get();
+        return isHorrorForm() ? ModSounds.HORROR_DEATH.get() : ModSounds.OTTER_DEATH.get();
     }
 
     @Override
     protected void playStepSound(BlockPos pos, BlockState state) {
-        this.playSound(SoundEvents.WOLF_STEP, 0.08F, 1.5F);
+        if (isHorrorForm()) {
+            this.playSound(ModSounds.HORROR_STEP.get(), 0.25F, 0.9F + this.random.nextFloat() * 0.2F);
+        } else {
+            this.playSound(SoundEvents.WOLF_STEP, 0.08F, 1.5F);
+        }
     }
 
     // ------------------------------------------------------------ GeckoLib
@@ -226,11 +333,21 @@ public class OtterEntity extends Animal implements GeoEntity {
         if (action != OtterAction.NONE) {
             return state.setAndContinue(RawAnimation.begin().thenLoop(action.animation()));
         }
-        if (this.isInWater()) {
-            return state.setAndContinue(state.isMoving() ? ANIM_SWIM : ANIM_SWIM_IDLE);
+        boolean moving = horizontalSpeed() > 0.02D;
+        if (isHorrorForm()) {
+            if (this.isInWater()) {
+                return state.setAndContinue(moving ? H_SWIM : H_SWIM_IDLE);
+            }
+            if (moving) {
+                return state.setAndContinue(horizontalSpeed() > 0.28D ? H_RUN : H_CRAWL);
+            }
+            return state.setAndContinue(H_IDLE);
         }
-        if (state.isMoving()) {
-            return state.setAndContinue(state.getLimbSwingAmount() > 0.65F ? ANIM_RUN : ANIM_WALK);
+        if (this.isInWater()) {
+            return state.setAndContinue(moving ? ANIM_SWIM : ANIM_SWIM_IDLE);
+        }
+        if (moving) {
+            return state.setAndContinue(horizontalSpeed() > 0.30D ? ANIM_RUN : ANIM_WALK);
         }
         return state.setAndContinue(ANIM_IDLE);
     }

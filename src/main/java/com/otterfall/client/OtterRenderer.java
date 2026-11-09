@@ -15,13 +15,19 @@ public class OtterRenderer extends GeoEntityRenderer<OtterEntity> {
         this.shadowRadius = 0.45F;
     }
 
-    // Sin @Override a proposito: escala las crias; si la firma cambiara no rompe la compilacion.
+    // Sin @Override a proposito: escala segun la forma; si la firma cambiara no rompe la compilacion.
     public void preRender(PoseStack poseStack, OtterEntity animatable, BakedGeoModel model,
                           MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender,
                           float partialTick, int packedLight, int packedOverlay,
                           float red, float green, float blue, float alpha) {
-        if (animatable.isBaby()) {
-            poseStack.scale(0.55F, 0.55F, 0.55F);
+        if (animatable.isHorrorForm()) {
+            poseStack.scale(0.8F, 0.8F, 0.8F);
+            this.shadowRadius = 0.75F;
+        } else {
+            this.shadowRadius = 0.45F;
+            if (animatable.isBaby()) {
+                poseStack.scale(0.55F, 0.55F, 0.55F);
+            }
         }
         super.preRender(poseStack, animatable, model, bufferSource, buffer, isReRender, partialTick,
                 packedLight, packedOverlay, red, green, blue, alpha);

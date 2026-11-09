@@ -2,20 +2,118 @@
   "entity.otter.ambient": {
     "subtitle": "subtitles.otterfall.entity.otter.ambient",
     "sounds": [
-      { "name": "entity.cat.stray_ambient", "type": "event", "pitch": 1.9, "volume": 0.4 },
-      { "name": "entity.axolotl.idle_air", "type": "event", "pitch": 1.8, "volume": 0.6 }
+      {
+        "name": "entity.cat.stray_ambient",
+        "type": "event",
+        "pitch": 1.9,
+        "volume": 0.4
+      },
+      {
+        "name": "entity.axolotl.idle_air",
+        "type": "event",
+        "pitch": 1.8,
+        "volume": 0.6
+      }
     ]
   },
   "entity.otter.hurt": {
     "subtitle": "subtitles.otterfall.entity.otter.hurt",
     "sounds": [
-      { "name": "entity.cat.hurt", "type": "event", "pitch": 1.7, "volume": 0.6 }
+      {
+        "name": "entity.cat.hurt",
+        "type": "event",
+        "pitch": 1.7,
+        "volume": 0.6
+      }
     ]
   },
   "entity.otter.death": {
     "subtitle": "subtitles.otterfall.entity.otter.death",
     "sounds": [
-      { "name": "entity.cat.death", "type": "event", "pitch": 1.7, "volume": 0.6 }
+      {
+        "name": "entity.cat.death",
+        "type": "event",
+        "pitch": 1.7,
+        "volume": 0.6
+      }
+    ]
+  },
+  "entity.otter_horror.ambient": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.ambient",
+    "sounds": [
+      {
+        "name": "entity.wolf.growl",
+        "type": "event",
+        "pitch": 0.45,
+        "volume": 0.5
+      },
+      {
+        "name": "entity.ravager.ambient",
+        "type": "event",
+        "pitch": 0.7,
+        "volume": 0.35
+      }
+    ]
+  },
+  "entity.otter_horror.hurt": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.hurt",
+    "sounds": [
+      {
+        "name": "entity.ravager.hurt",
+        "type": "event",
+        "pitch": 1.2,
+        "volume": 0.7
+      }
+    ]
+  },
+  "entity.otter_horror.death": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.death",
+    "sounds": [
+      {
+        "name": "entity.ravager.death",
+        "type": "event",
+        "pitch": 1.3,
+        "volume": 0.8
+      }
+    ]
+  },
+  "entity.otter_horror.screech": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.screech",
+    "sounds": [
+      {
+        "name": "entity.fox.screech",
+        "type": "event",
+        "pitch": 0.6,
+        "volume": 1.0
+      },
+      {
+        "name": "entity.cat.hiss",
+        "type": "event",
+        "pitch": 0.5,
+        "volume": 1.0
+      }
+    ]
+  },
+  "entity.otter_horror.jaw": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.jaw",
+    "sounds": [
+      {
+        "name": "entity.evoker_fangs.attack",
+        "type": "event",
+        "pitch": 1.6,
+        "volume": 0.9
+      }
+    ]
+  },
+  "entity.otter_horror.step": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.step",
+    "sounds": [
+      {
+        "name": "entity.spider.step",
+        "type": "event",
+        "pitch": 0.8,
+        "volume": 0.6
+      }
     ]
   }
 }

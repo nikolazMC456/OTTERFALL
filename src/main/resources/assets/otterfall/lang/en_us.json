@@ -3,5 +3,11 @@
   "item.otterfall.otter_spawn_egg": "Otter Spawn Egg",
   "subtitles.otterfall.entity.otter.ambient": "Otter chirps",
   "subtitles.otterfall.entity.otter.hurt": "Otter hurts",
-  "subtitles.otterfall.entity.otter.death": "Otter dies"
+  "subtitles.otterfall.entity.otter.death": "Otter dies",
+  "subtitles.otterfall.entity.otter_horror.ambient": "Abyssal otter breathes",
+  "subtitles.otterfall.entity.otter_horror.hurt": "Abyssal otter snarls",
+  "subtitles.otterfall.entity.otter_horror.death": "Abyssal otter dies",
+  "subtitles.otterfall.entity.otter_horror.screech": "Abyssal otter screeches",
+  "subtitles.otterfall.entity.otter_horror.jaw": "Jaws snap",
+  "subtitles.otterfall.entity.otter_horror.step": "Limbs skitter"
 }
