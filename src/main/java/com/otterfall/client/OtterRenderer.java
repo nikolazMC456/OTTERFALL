@@ -7,12 +7,15 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
+import software.bernie.geckolib.renderer.layer.AutoGlowingGeoLayer;
 
 public class OtterRenderer extends GeoEntityRenderer<OtterEntity> {
 
     public OtterRenderer(EntityRendererProvider.Context context) {
         super(context, new OtterModel());
         this.shadowRadius = 0.45F;
+        // ojos (y heridas) brillantes: usa textures/entity/<textura>_glowmask.png
+        addRenderLayer(new AutoGlowingGeoLayer<>(this));
     }
 
     // Sin @Override a proposito: escala segun la forma; si la firma cambiara no rompe la compilacion.
@@ -21,8 +24,7 @@ public class OtterRenderer extends GeoEntityRenderer<OtterEntity> {
                           float partialTick, int packedLight, int packedOverlay,
                           float red, float green, float blue, float alpha) {
         if (animatable.isHorrorForm()) {
-            poseStack.scale(0.8F, 0.8F, 0.8F);
-            this.shadowRadius = 0.75F;
+            this.shadowRadius = 2.2F;
         } else {
             this.shadowRadius = 0.45F;
             if (animatable.isBaby()) {

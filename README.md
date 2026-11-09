@@ -4,12 +4,12 @@ Mod de Minecraft Java 1.20.1 con Forge 47.3.0 y GeckoLib 4.4.9.
 
 ## Instalar en el juego
 Necesitas DOS archivos en la carpeta `mods`:
-1. `otterfall-0.2.0.jar` (el que compila GitHub Actions)
+1. `otterfall-0.2.1.jar` (el que compila GitHub Actions)
 2. GeckoLib 4.4.9 para Forge 1.20.1 (CurseForge o Modrinth)
 
 ## Que incluye
 - Fase 1: nutria normal (modelo 512x512, 11 animaciones, come pescado, cria, nada, duerme...).
-- Fase 2: forma monstruosa "Nutria Abismal" (modelo propio, textura 1024x1024, 10 animaciones,
+- Fase 2: forma monstruosa "Nutria Abismal" gigante (~4 bloques de alto, ojos rojos brillantes, textura 2048x2048, 10 animaciones,
   sonidos propios, comportamiento basico).
 
 ## Probar la forma monstruosa (todavia no aparece sola: la transformacion llega en la Fase 3)

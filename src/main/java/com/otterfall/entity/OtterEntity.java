@@ -23,6 +23,7 @@ import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -50,6 +51,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.phys.AABB;
 import net.minecraftforge.common.ForgeMod;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
@@ -75,6 +77,8 @@ public class OtterEntity extends Animal implements GeoEntity {
             SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.INT);
 
     private static final UUID HORROR_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a01");
+    private static final UUID HORROR_HEALTH_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a03");
+    private static final UUID HORROR_KNOCKBACK_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a04");
 
     // forma normal
     private static final RawAnimation ANIM_IDLE = RawAnimation.begin().thenLoop("animation.otter.idle");
@@ -134,7 +138,15 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     public EntityDimensions getDimensions(Pose pose) {
         EntityDimensions base = super.getDimensions(pose);
-        return isHorrorForm() ? base.scale(1.15F, 1.4F) : base;
+        // la Nutria Abismal es gigante: 3 bloques de ancho y 3.8 de alto
+        return isHorrorForm() ? EntityDimensions.scalable(3.0F, 3.8F) : base;
+    }
+
+    @Override
+    public AABB getBoundingBoxForCulling() {
+        // el modelo monstruoso es mucho mas largo que su hitbox: ampliar el recorte de renderizado
+        AABB box = super.getBoundingBoxForCulling();
+        return isHorrorForm() ? box.inflate(4.0D) : box;
     }
 
     @Override
@@ -145,15 +157,25 @@ public class OtterEntity extends Animal implements GeoEntity {
         super.onSyncedDataUpdated(key);
     }
 
-    private void applyFormAttributes(boolean horror) {
-        AttributeInstance damage = this.getAttribute(Attributes.ATTACK_DAMAGE);
-        if (damage == null) {
+    private void setModifier(Attribute attribute, UUID id, String name, double amount, boolean on) {
+        AttributeInstance instance = this.getAttribute(attribute);
+        if (instance == null) {
             return;
         }
-        damage.removeModifier(HORROR_DAMAGE_ID);
+        instance.removeModifier(id);
+        if (on) {
+            instance.addTransientModifier(new AttributeModifier(id, name, amount, AttributeModifier.Operation.ADDITION));
+        }
+    }
+
+    private void applyFormAttributes(boolean horror) {
+        setModifier(Attributes.ATTACK_DAMAGE, HORROR_DAMAGE_ID, "Horror damage", 8.0D, horror);
+        setModifier(Attributes.MAX_HEALTH, HORROR_HEALTH_ID, "Horror health", 70.0D, horror);
+        setModifier(Attributes.KNOCKBACK_RESISTANCE, HORROR_KNOCKBACK_ID, "Horror knockback", 0.7D, horror);
         if (horror) {
-            damage.addTransientModifier(new AttributeModifier(HORROR_DAMAGE_ID, "Horror damage", 5.0D,
-                    AttributeModifier.Operation.ADDITION));
+            this.setHealth(this.getMaxHealth());
+        } else if (this.getHealth() > this.getMaxHealth()) {
+            this.setHealth(this.getMaxHealth());
         }
     }
 
