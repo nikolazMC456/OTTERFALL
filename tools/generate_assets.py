@@ -660,6 +660,11 @@ def main():
     os.makedirs(os.path.join(ASSETS, "textures", "entity"), exist_ok=True)
     img, geo = build_texture_and_geo()
     Image.fromarray(img, "RGBA").save(os.path.join(ASSETS, "textures", "entity", "otter.png"), optimize=True)
+    # mascara de brillo de la nutria normal: GeckoLib exige al menos un pixel NO transparente.
+    # (0,0) no esta usado por ninguna cara y el negro emisivo no se ve.
+    glow = np.zeros((TEX_SIZE, TEX_SIZE, 4), dtype=np.uint8)
+    glow[0, 0] = (0, 0, 0, 255)
+    Image.fromarray(glow, "RGBA").save(os.path.join(ASSETS, "textures", "entity", "otter_glowmask.png"))
     with open(os.path.join(ASSETS, "geo", "otter.geo.json"), "w") as f:
         json.dump(geo, f, indent=1)
     with open(os.path.join(ASSETS, "animations", "otter.animation.json"), "w") as f:
