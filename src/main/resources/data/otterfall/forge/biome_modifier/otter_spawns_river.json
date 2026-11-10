@@ -3,8 +3,8 @@
   "biomes": "#minecraft:is_river",
   "spawners": {
     "type": "otterfall:otter",
-    "weight": 14,
-    "minCount": 2,
-    "maxCount": 4
+    "weight": 45,
+    "minCount": 3,
+    "maxCount": 6
   }
 }

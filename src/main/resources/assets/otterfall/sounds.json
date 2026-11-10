@@ -109,10 +109,24 @@
     "subtitle": "subtitles.otterfall.entity.otter_horror.step",
     "sounds": [
       {
-        "name": "entity.spider.step",
-        "type": "event",
-        "pitch": 0.8,
-        "volume": 0.6
+        "name": "otterfall:entity/otter_horror_step1",
+        "volume": 1.0,
+        "attenuation_distance": 40
+      },
+      {
+        "name": "otterfall:entity/otter_horror_step2",
+        "volume": 1.0,
+        "attenuation_distance": 40
+      },
+      {
+        "name": "otterfall:entity/otter_horror_step3",
+        "volume": 1.0,
+        "attenuation_distance": 40
+      },
+      {
+        "name": "otterfall:entity/otter_horror_step4",
+        "volume": 1.0,
+        "attenuation_distance": 40
       }
     ]
   },

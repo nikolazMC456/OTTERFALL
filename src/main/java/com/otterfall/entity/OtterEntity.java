@@ -104,6 +104,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final UUID FRENZY_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a05");
     private static final UUID FRENZY_SPEED_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a06");
     private static final UUID FRENZY_FOLLOW_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a07");
+    private static final UUID HORROR_SPEED_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a08");
     private static final UUID HORROR_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a01");
     private static final UUID HORROR_HEALTH_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a03");
     private static final UUID HORROR_KNOCKBACK_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a04");
@@ -136,6 +137,7 @@ public class OtterEntity extends Animal implements GeoEntity {
     private boolean wasInWater = false;
     private boolean wantsShake = false;
     private int actionTicks = 0;
+    private int stepCount = 0;
     /** Si es true, la forma no cambia sola con la hora (util para probar con /summon). */
     private boolean locked = false;
 
@@ -285,6 +287,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         boolean frenzy = state == OtterState.FRENZY;
         setModifier(Attributes.ATTACK_DAMAGE, HORROR_DAMAGE_ID, "Horror damage", 8.0D, horror);
         setModifier(Attributes.MAX_HEALTH, HORROR_HEALTH_ID, "Horror health", 70.0D, horror);
+        setModifier(Attributes.MOVEMENT_SPEED, HORROR_SPEED_ID, "Horror speed", 0.04D, horror);
         setModifier(Attributes.KNOCKBACK_RESISTANCE, HORROR_KNOCKBACK_ID, "Horror knockback", 0.7D, horror);
         // frenesi: mas dano, mas velocidad y un radio de rastreo enorme
         setModifier(Attributes.ATTACK_DAMAGE, FRENZY_DAMAGE_ID, "Frenzy damage", 5.0D, frenzy);
@@ -609,7 +612,10 @@ public class OtterEntity extends Animal implements GeoEntity {
     @Override
     protected void playStepSound(BlockPos pos, BlockState state) {
         if (isHorrorForm()) {
-            this.playSound(ModSounds.HORROR_STEP.get(), 0.25F, 0.9F + this.random.nextFloat() * 0.2F);
+            // paso pesado (audio propio, 4 variantes); suena uno de cada dos para no saturar al correr
+            if ((this.stepCount++ & 1) == 0) {
+                this.playSound(ModSounds.HORROR_STEP.get(), 1.0F, 0.95F + this.random.nextFloat() * 0.1F);
+            }
         } else {
             this.playSound(SoundEvents.WOLF_STEP, 0.08F, 1.5F);
         }
