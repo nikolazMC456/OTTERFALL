@@ -1,27 +1,37 @@
-# OTTERFALL (Fase 2: nutria normal + forma monstruosa)
+# OTTERFALL (Fase 3: transformacion nocturna)
 
-Mod de Minecraft Java 1.20.1 con Forge 47.3.0 y GeckoLib 4.4.9.
+Mod de Minecraft Java 1.20.1 con Forge 47.x y GeckoLib 4.x.
 
 ## Instalar en el juego
 Necesitas DOS archivos en la carpeta `mods`:
-1. `otterfall-0.2.2.jar` (el que compila GitHub Actions)
-2. GeckoLib 4.4.9 para Forge 1.20.1 (CurseForge o Modrinth)
+1. `otterfall-0.3.0.jar` (el que compila GitHub Actions)
+2. GeckoLib para Forge 1.20.1 (CurseForge o Modrinth)
 
-## Que incluye
-- Fase 1: nutria normal (modelo 512x512, 11 animaciones, come pescado, cria, nada, duerme...).
-- Fase 2: forma monstruosa "Nutria Abismal" gigante (~4 bloques de alto, ojos rojos brillantes, textura 2048x2048, 10 animaciones,
-  sonidos propios, comportamiento basico).
+## Ciclo de la nutria (solo en dimensiones con dia y noche)
+| Hora del juego | Estado |
+|---|---|
+| dia | NORMAL: nutria adorable |
+| 11800 (anochecer) | SUSPICIOUS: se queda quieta, tiembla, inclina la cabeza y te mira fijamente |
+| 13000 (noche), tras >= 7 s | TRANSFORMING: ~8 s de animacion (3.5 s modelo normal + 4.5 s modelo monstruoso) |
+| fin de la transformacion | HORROR: Nutria Abismal gigante + risa distorsionada |
+| 23000 (amanecer) | RETURNING_TO_NORMAL: se repliega ~5.5 s y vuelve a NORMAL |
 
-## Probar la forma monstruosa (todavia no aparece sola: la transformacion llega en la Fase 3)
-    /summon otterfall:otter ~ ~ ~ {OtterState:3}
-(3 = HORROR, 4 = FRENZY; ambos usan el modelo monstruoso). Prueba en modo supervivencia:
-en creativo no te ataca.
+Si no hay espacio para la forma gigante (3x3.8 bloques), la nutria busca un sitio cercano libre
+(hasta 8 bloques). Si no lo encuentra, sigue en estado SUSPICIOUS y reintenta.
+Las crias no se transforman.
 
-## Regenerar modelos, texturas y animaciones
-    python3 tools/generate_assets.py     # nutria normal
-    python3 tools/generate_horror.py     # nutria abismal
-(requiere numpy y Pillow)
+## Probar
+- Ver la transformacion: invoca una nutria (huevo o `/summon otterfall:otter ~ ~ ~`) y pon `/time set 12900`.
+- Ver el regreso al amanecer: con la nutria monstruosa activa, `/time set 22950`.
+- Monstruo fijo para probar combate/animaciones:
+  `/summon otterfall:otter ~ ~ ~ {OtterState:3,OtterLocked:1b}` (en supervivencia).
+
+## Regenerar recursos
+    python3 tools/generate_assets.py     # nutria normal (+ textura corrupta)
+    python3 tools/generate_horror.py     # nutria abismal (~1 minuto)
+    python3 tools/make_laugh.py risa.mp3 # distorsiona la risa y la convierte a .ogg
+(requiere numpy, scipy, Pillow y ffmpeg)
 
 ## Pendiente
-Transformacion nocturna (Fase 3), memoria de agresores y frenesi (Fase 4), horror psicologico y
-eventos (Fase 5), optimizacion, configuracion y sonidos propios (ahora se reutilizan los de vanilla).
+Memoria de agresores y frenesi (Fase 4), horror psicologico y eventos (Fase 5), optimizacion,
+configuracion y sonidos propios (casi todos reutilizan sonidos de vanilla; la risa final es propia).

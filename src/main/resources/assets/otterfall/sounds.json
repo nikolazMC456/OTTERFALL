@@ -115,5 +115,60 @@
         "volume": 0.6
       }
     ]
+  },
+  "entity.otter.suspicious": {
+    "subtitle": "subtitles.otterfall.entity.otter.suspicious",
+    "sounds": [
+      {
+        "name": "entity.wolf.whine",
+        "type": "event",
+        "pitch": 0.5,
+        "volume": 0.5
+      }
+    ]
+  },
+  "entity.otter.transform_crack": {
+    "subtitle": "subtitles.otterfall.entity.otter.transform_crack",
+    "sounds": [
+      {
+        "name": "block.bone_block.break",
+        "type": "event",
+        "pitch": 0.5,
+        "volume": 1.0
+      },
+      {
+        "name": "block.bone_block.hit",
+        "type": "event",
+        "pitch": 0.4,
+        "volume": 1.0
+      },
+      {
+        "name": "entity.zombie.break_wooden_door",
+        "type": "event",
+        "pitch": 0.6,
+        "volume": 0.45
+      }
+    ]
+  },
+  "entity.otter_horror.transform_roar": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.transform_roar",
+    "sounds": [
+      {
+        "name": "entity.ravager.roar",
+        "type": "event",
+        "pitch": 0.5,
+        "volume": 1.2
+      }
+    ]
+  },
+  "entity.otter_horror.laugh": {
+    "subtitle": "subtitles.otterfall.entity.otter_horror.laugh",
+    "sounds": [
+      {
+        "name": "otterfall:entity/otter_horror_laugh",
+        "volume": 1.0,
+        "attenuation_distance": 48
+      }
+    ]
   }
 }

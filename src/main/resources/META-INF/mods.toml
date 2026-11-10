@@ -4,11 +4,11 @@ license="All Rights Reserved"
 
 [[mods]]
 modId="otterfall"
-version="0.2.2"
+version="0.3.0"
 displayName="Otterfall"
 description='''
 Una sola criatura: la nutria. Adorable de dia... y no tanto de noche.
-Fase 2: nutria normal y forma monstruosa (Nutria Abismal).
+Fase 3: nutria normal, forma monstruosa (Nutria Abismal) y transformacion nocturna.
 '''
 
 [[dependencies.otterfall]]

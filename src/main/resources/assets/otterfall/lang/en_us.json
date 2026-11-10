@@ -9,5 +9,9 @@
   "subtitles.otterfall.entity.otter_horror.death": "Abyssal otter dies",
   "subtitles.otterfall.entity.otter_horror.screech": "Abyssal otter screeches",
   "subtitles.otterfall.entity.otter_horror.jaw": "Jaws snap",
-  "subtitles.otterfall.entity.otter_horror.step": "Limbs skitter"
+  "subtitles.otterfall.entity.otter_horror.step": "Limbs skitter",
+  "subtitles.otterfall.entity.otter.suspicious": "Otter whimpers strangely",
+  "subtitles.otterfall.entity.otter.transform_crack": "Bones crack",
+  "subtitles.otterfall.entity.otter_horror.transform_roar": "Abyssal otter roars",
+  "subtitles.otterfall.entity.otter_horror.laugh": "Distorted laughter"
 }

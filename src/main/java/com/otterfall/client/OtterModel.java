@@ -16,29 +16,34 @@ public class OtterModel extends GeoModel<OtterEntity> {
     private static final ResourceLocation TEXTURE = new ResourceLocation(Otterfall.MODID, "textures/entity/otter.png");
     private static final ResourceLocation ANIMATION = new ResourceLocation(Otterfall.MODID, "animations/otter.animation.json");
 
+    private static final ResourceLocation CORRUPT_TEXTURE = new ResourceLocation(Otterfall.MODID, "textures/entity/otter_corrupt.png");
+
     private static final ResourceLocation H_MODEL = new ResourceLocation(Otterfall.MODID, "geo/otter_horror.geo.json");
     private static final ResourceLocation H_TEXTURE = new ResourceLocation(Otterfall.MODID, "textures/entity/otter_horror.png");
     private static final ResourceLocation H_ANIMATION = new ResourceLocation(Otterfall.MODID, "animations/otter_horror.animation.json");
 
     @Override
     public ResourceLocation getModelResource(OtterEntity animatable) {
-        return animatable.isHorrorForm() ? H_MODEL : MODEL;
+        return animatable.shouldRenderHorrorModel() ? H_MODEL : MODEL;
     }
 
     @Override
     public ResourceLocation getTextureResource(OtterEntity animatable) {
-        return animatable.isHorrorForm() ? H_TEXTURE : TEXTURE;
+        if (animatable.shouldRenderHorrorModel()) {
+            return H_TEXTURE;
+        }
+        return animatable.shouldUseCorruptTexture() ? CORRUPT_TEXTURE : TEXTURE;
     }
 
     @Override
     public ResourceLocation getAnimationResource(OtterEntity animatable) {
-        return animatable.isHorrorForm() ? H_ANIMATION : ANIMATION;
+        return animatable.shouldRenderHorrorModel() ? H_ANIMATION : ANIMATION;
     }
 
     @Override
     public void setCustomAnimations(OtterEntity animatable, long instanceId, AnimationState<OtterEntity> animationState) {
         EntityModelData data = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
-        if (animatable.isHorrorForm()) {
+        if (animatable.shouldRenderHorrorModel()) {
             // la cabeza gira antes que el cuerpo: el giro se reparte por el cuello largo
             track("neck1", data, 0.25F);
             track("neck2", data, 0.30F);

@@ -23,7 +23,7 @@ public class OtterRenderer extends GeoEntityRenderer<OtterEntity> {
                           MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender,
                           float partialTick, int packedLight, int packedOverlay,
                           float red, float green, float blue, float alpha) {
-        if (animatable.isHorrorForm()) {
+        if (animatable.shouldRenderHorrorModel()) {
             this.shadowRadius = 2.2F;
         } else {
             this.shadowRadius = 0.45F;

@@ -1,8 +1,10 @@
 package com.otterfall.entity;
 
 import com.otterfall.entity.ai.FormGate;
+import com.otterfall.entity.ai.OtterFreezeGoal;
 import com.otterfall.entity.ai.OtterHorrorActionGoal;
 import com.otterfall.entity.ai.OtterIdleActionGoal;
+import com.otterfall.entity.ai.OtterSuspiciousGoal;
 import com.otterfall.registry.ModEntities;
 import com.otterfall.registry.ModSounds;
 import net.minecraft.core.BlockPos;
@@ -65,15 +67,21 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 import java.util.UUID;
 
 /**
- * Nutria. Una sola entidad con dos formas (normal y monstruosa) que comparten
- * IA base, atributos y datos sincronizados; el modelo cambia segun {@link OtterState}.
- * Fase 2: forma monstruosa con modelo, animaciones, sonidos y comportamiento basico.
+ * Nutria. Una sola entidad con dos formas (normal y monstruosa) y una transformacion
+ * animada entre ambas. El modelo cambia segun {@link OtterState} y los contadores de
+ * {@link OtterTransformationController}.
+ * Fase 3: ciclo dia/noche, aviso al anochecer, animacion de transformacion y regreso al amanecer.
  */
 public class OtterEntity extends Animal implements GeoEntity {
+
+    /** Hitbox de la Nutria Abismal: 3 bloques de ancho, 3.8 de alto. */
+    public static final EntityDimensions HORROR_DIMENSIONS = EntityDimensions.scalable(3.0F, 3.8F);
 
     private static final EntityDataAccessor<Integer> DATA_ACTION =
             SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_STATE =
+            SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_TRANSFORM =
             SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.INT);
 
     private static final UUID HORROR_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a01");
@@ -86,6 +94,12 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final RawAnimation ANIM_RUN = RawAnimation.begin().thenLoop("animation.otter.run");
     private static final RawAnimation ANIM_SWIM = RawAnimation.begin().thenLoop("animation.otter.swim");
     private static final RawAnimation ANIM_SWIM_IDLE = RawAnimation.begin().thenLoop("animation.otter.swim_idle");
+    // transformacion
+    private static final RawAnimation ANIM_SUSPICIOUS = RawAnimation.begin().thenLoop("animation.otter.suspicious");
+    private static final RawAnimation ANIM_TRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter.transform");
+    private static final RawAnimation ANIM_UNTRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter.untransform");
+    private static final RawAnimation H_TRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter_horror.transform");
+    private static final RawAnimation H_UNTRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter_horror.untransform");
     // forma monstruosa
     private static final RawAnimation H_IDLE = RawAnimation.begin().thenLoop("animation.otter_horror.idle");
     private static final RawAnimation H_CRAWL = RawAnimation.begin().thenLoop("animation.otter_horror.crawl");
@@ -94,10 +108,13 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final RawAnimation H_SWIM_IDLE = RawAnimation.begin().thenLoop("animation.otter_horror.swim_idle");
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private final OtterTransformationController transformation = new OtterTransformationController(this);
 
     private boolean wasInWater = false;
     private boolean wantsShake = false;
     private int actionTicks = 0;
+    /** Si es true, la forma no cambia sola con la hora (util para probar con /summon). */
+    private boolean locked = false;
 
     public OtterEntity(EntityType<? extends OtterEntity> type, Level level) {
         super(type, level);
@@ -125,28 +142,70 @@ public class OtterEntity extends Animal implements GeoEntity {
         return shore && level.getRawBrightness(pos, 0) > 8;
     }
 
-    // ------------------------------------------------------------------ formas
+    // ------------------------------------------------------------------ formas y estados
 
+    /** Estado real: HORROR o FRENZY (hitbox gigante, IA y atributos monstruosos). */
     public boolean isHorrorForm() {
         return getOtterState().usesHorrorModel();
     }
 
+    /** Solo la nutria diurna y tranquila. */
     public boolean isNormalForm() {
-        return !isHorrorForm();
+        return getOtterState() == OtterState.NORMAL;
+    }
+
+    public boolean isSuspicious() {
+        return getOtterState() == OtterState.SUSPICIOUS;
+    }
+
+    public boolean isTransitioning() {
+        OtterState s = getOtterState();
+        return s == OtterState.TRANSFORMING || s == OtterState.RETURNING_TO_NORMAL;
+    }
+
+    /** Puede deambular libremente (forma normal o monstruosa, no durante avisos ni transiciones). */
+    public boolean canRoam() {
+        return isNormalForm() || isHorrorForm();
+    }
+
+    /** Modelo visual: incluye las fases de la transformacion en las que ya se ve el monstruo. */
+    public boolean shouldRenderHorrorModel() {
+        OtterState s = getOtterState();
+        if (s.usesHorrorModel()) {
+            return true;
+        }
+        int t = getTransformTicks();
+        if (s == OtterState.TRANSFORMING) {
+            return t >= OtterTransformationController.PHASE_A;
+        }
+        if (s == OtterState.RETURNING_TO_NORMAL) {
+            return t < OtterTransformationController.RETURN_A;
+        }
+        return false;
+    }
+
+    /** Pelaje oscurecido que aparece a mitad de la fase A de la transformacion. */
+    public boolean shouldUseCorruptTexture() {
+        return getOtterState() == OtterState.TRANSFORMING
+                && getTransformTicks() >= 25
+                && getTransformTicks() < OtterTransformationController.PHASE_A;
+    }
+
+    public boolean isLocked() {
+        return locked;
     }
 
     @Override
     public EntityDimensions getDimensions(Pose pose) {
         EntityDimensions base = super.getDimensions(pose);
-        // la Nutria Abismal es gigante: 3 bloques de ancho y 3.8 de alto
-        return isHorrorForm() ? EntityDimensions.scalable(3.0F, 3.8F) : base;
+        return isHorrorForm() ? HORROR_DIMENSIONS : base;
     }
 
     @Override
     public AABB getBoundingBoxForCulling() {
         // el modelo monstruoso es mucho mas largo que su hitbox: ampliar el recorte de renderizado
         AABB box = super.getBoundingBoxForCulling();
-        return isHorrorForm() ? box.inflate(4.0D) : box;
+        return shouldRenderHorrorModel() ? box.inflate(4.0D) : box;
     }
 
     @Override
@@ -188,6 +247,9 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     protected void registerGoals() {
+        // ---- transiciones (siempre quieta)
+        this.goalSelector.addGoal(0, new FormGate(new OtterFreezeGoal(this), this::isTransitioning));
+        this.goalSelector.addGoal(1, new FormGate(new OtterSuspiciousGoal(this), this::isSuspicious));
         // ---- forma normal
         this.goalSelector.addGoal(1, new FormGate(new PanicGoal(this, 1.5D), this::isNormalForm));
         this.goalSelector.addGoal(2, new FormGate(new BreedGoal(this, 1.0D), this::isNormalForm));
@@ -200,11 +262,11 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.goalSelector.addGoal(3, new FormGate(new OtterHorrorActionGoal(this), this::isHorrorForm));
         this.targetSelector.addGoal(1, new FormGate(
                 new NearestAttackableTargetGoal<>(this, Player.class, true), this::isHorrorForm));
-        // ---- comunes
-        this.goalSelector.addGoal(6, new RandomSwimmingGoal(this, 1.0D, 80));
-        this.goalSelector.addGoal(7, new RandomStrollGoal(this, 0.9D, 120));
-        this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
+        // ---- comunes (solo en formas estables)
+        this.goalSelector.addGoal(6, new FormGate(new RandomSwimmingGoal(this, 1.0D, 80), this::canRoam));
+        this.goalSelector.addGoal(7, new FormGate(new RandomStrollGoal(this, 0.9D, 120), this::canRoam));
+        this.goalSelector.addGoal(8, new FormGate(new LookAtPlayerGoal(this, Player.class, 8.0F), this::canRoam));
+        this.goalSelector.addGoal(9, new FormGate(new RandomLookAroundGoal(this), this::canRoam));
     }
 
     @Override
@@ -249,6 +311,7 @@ public class OtterEntity extends Animal implements GeoEntity {
             if (this.actionTicks > 0 && --this.actionTicks == 0) {
                 this.setAction(OtterAction.NONE);
             }
+            this.transformation.tick();
         }
     }
 
@@ -274,6 +337,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         super.defineSynchedData();
         this.entityData.define(DATA_ACTION, 0);
         this.entityData.define(DATA_STATE, 0);
+        this.entityData.define(DATA_TRANSFORM, 0);
     }
 
     public OtterAction getAction() {
@@ -288,11 +352,20 @@ public class OtterEntity extends Animal implements GeoEntity {
         return OtterState.byId(this.entityData.get(DATA_STATE));
     }
 
+    public int getTransformTicks() {
+        return this.entityData.get(DATA_TRANSFORM);
+    }
+
+    public void setTransformTicks(int ticks) {
+        this.entityData.set(DATA_TRANSFORM, ticks);
+    }
+
     public void setOtterState(OtterState state) {
         this.entityData.set(DATA_STATE, state.ordinal());
         if (!this.level().isClientSide) {
             applyFormAttributes(state.usesHorrorModel());
             this.actionTicks = 0;
+            this.setTransformTicks(0);
             this.setAction(OtterAction.NONE);
             if (!state.usesHorrorModel()) {
                 this.setTarget(null);
@@ -304,12 +377,16 @@ public class OtterEntity extends Animal implements GeoEntity {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("OtterState", getOtterState().ordinal());
+        tag.putInt("OtterTransform", getTransformTicks());
+        tag.putBoolean("OtterLocked", locked);
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         setOtterState(OtterState.byId(tag.getInt("OtterState")));
+        setTransformTicks(tag.getInt("OtterTransform"));
+        locked = tag.getBoolean("OtterLocked");
     }
 
     // ------------------------------------------------------------- sonidos
@@ -321,17 +398,24 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     protected SoundEvent getAmbientSound() {
+        OtterState s = getOtterState();
+        if (s == OtterState.SUSPICIOUS) {
+            return ModSounds.OTTER_SUSPICIOUS.get();
+        }
+        if (s == OtterState.TRANSFORMING || s == OtterState.RETURNING_TO_NORMAL) {
+            return null;
+        }
         return isHorrorForm() ? ModSounds.HORROR_AMBIENT.get() : ModSounds.OTTER_AMBIENT.get();
     }
 
     @Override
     protected SoundEvent getHurtSound(DamageSource source) {
-        return isHorrorForm() ? ModSounds.HORROR_HURT.get() : ModSounds.OTTER_HURT.get();
+        return shouldRenderHorrorModel() ? ModSounds.HORROR_HURT.get() : ModSounds.OTTER_HURT.get();
     }
 
     @Override
     protected SoundEvent getDeathSound() {
-        return isHorrorForm() ? ModSounds.HORROR_DEATH.get() : ModSounds.OTTER_DEATH.get();
+        return shouldRenderHorrorModel() ? ModSounds.HORROR_DEATH.get() : ModSounds.OTTER_DEATH.get();
     }
 
     @Override
@@ -351,6 +435,16 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     private PlayState mainPredicate(AnimationState<OtterEntity> state) {
+        OtterState os = getOtterState();
+        if (os == OtterState.TRANSFORMING) {
+            return state.setAndContinue(shouldRenderHorrorModel() ? H_TRANSFORM : ANIM_TRANSFORM);
+        }
+        if (os == OtterState.RETURNING_TO_NORMAL) {
+            return state.setAndContinue(shouldRenderHorrorModel() ? H_UNTRANSFORM : ANIM_UNTRANSFORM);
+        }
+        if (os == OtterState.SUSPICIOUS) {
+            return state.setAndContinue(ANIM_SUSPICIOUS);
+        }
         OtterAction action = this.getAction();
         if (action != OtterAction.NONE) {
             return state.setAndContinue(RawAnimation.begin().thenLoop(action.animation()));

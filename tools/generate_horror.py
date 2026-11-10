@@ -62,7 +62,7 @@ def spike(name, base, size, rot, zone="h_bone"):
 # ----------------------------------------------------------------------------
 # MODELO  (1 unidad = 1/16 de bloque; frente hacia -Z)
 # ----------------------------------------------------------------------------
-bone("root", None, [0, 28, 0], [])
+bone("root", None, [0, 0, 0], [])   # pivote en el suelo: la escala crece desde el piso
 
 # ---------------- cadera
 pelvis_cubes = [
@@ -773,6 +773,88 @@ def make_animations():
     drips(a, 0.4, 16)
     tail3(a, L, 5, 3, lag=0.4, base_x=6)
     A[P + "bite"] = finish(a)
+
+
+    # ---- transform (fase B, modelo monstruoso): nace pequena y retorcida y se despliega hasta su tamano real
+    L = 4.5
+    a = g.Anim(L, loop="hold_on_last_frame", dt=0.05)
+
+    def grow(t):
+        return 0.16 + 0.84 * (0.06 * sstep(0, 1.0, t) + 0.49 * sstep(1.0, 2.4, t) + 0.45 * sstep(2.3, 3.4, t)
+                              + 0.08 * sstep(3.3, 3.6, t) - 0.08 * sstep(3.6, 4.5, t))
+
+    def unf(t):                      # 0 = encogida, 1 = desplegada
+        return sstep(1.0, 3.0, t)
+
+    def sp(t):                       # intensidad de espasmos
+        return (0.4 + 0.6 * sstep(0, 0.6, t)) * (1 - sstep(2.8, 3.6, t))
+
+    def n1(t):
+        return s(t, 0.13) + 0.6 * s(t, 0.21, 1) + 0.4 * s(t, 0.07, 2)
+
+    def n2(t):
+        return s(t, 0.11, 0.5) + 0.7 * s(t, 0.17, 2) + 0.3 * s(t, 0.06, 1)
+    a.chan("root", "scale", lambda t: [grow(t)] * 3)
+    R(a, "arm_l", lambda t: [-45 * (1 - unf(t)) + 12 * n1(t) * sp(t), 0, 0])
+    R(a, "arm_r", lambda t: [-45 * (1 - unf(t)) - 12 * n2(t) * sp(t), 0, 0])
+    R(a, "forearm_l", lambda t: [60 * (1 - unf(t)), 0, 0])
+    R(a, "forearm_r", lambda t: [60 * (1 - unf(t)), 0, 0])
+    R(a, "thigh_l", lambda t: [-40 * (1 - unf(t)) + 10 * n2(t) * sp(t), 0, 0])
+    R(a, "thigh_r", lambda t: [-40 * (1 - unf(t)) - 10 * n1(t) * sp(t), 0, 0])
+    R(a, "shin_l", lambda t: [50 * (1 - unf(t)), 0, 0])
+    R(a, "shin_r", lambda t: [50 * (1 - unf(t)), 0, 0])
+    for nm in ("arm_l", "arm_r", "thigh_l", "thigh_r"):
+        a.chan(nm, "scale", lambda t: [1, 0.55 + 0.45 * sstep(0.8, 3.2, t), 1])
+    for nm in ("neck1", "neck2"):
+        a.chan(nm, "scale", lambda t: [1, 1, 0.55 + 0.45 * sstep(1.0, 3.0, t)])
+    a.rot("spine", lambda t: [14 * (1 - unf(t)) + 6 * n2(t) * sp(t), 0, 14 * n1(t) * sp(t)])
+    a.rot("chest", lambda t: [-14 * sstep(2.6, 3.2, t) + 14 * sstep(3.6, 4.3, t), 10 * n2(t) * sp(t), 8 * n1(t) * sp(t)])
+    R(a, "neck1", lambda t: [25 * (1 - unf(t)) + 8 * n1(t) * sp(t), 14 * n2(t) * sp(t), 0])
+    R(a, "neck2", lambda t: [25 * (1 - unf(t)), 12 * n1(t) * sp(t), 0])
+    R(a, "head", lambda t: [30 * (1 - unf(t)) - 30 * sstep(2.6, 3.2, t) + 30 * sstep(3.6, 4.3, t) + 10 * n2(t) * sp(t),
+                            26 * n1(t) * sp(t), 8 * n2(t) * sp(t)])
+    a.rot("jaw", lambda t: [4 + 66 * sstep(2.3, 3.0, t) - 48 * sstep(3.7, 4.4, t)
+                            + 3 * math.sin(TAU * 16 * t) * sstep(2.6, 3.0, t) * (1 - sstep(3.7, 4.0, t)), 0, 0])
+    a.rot("ear_l", lambda t: [0, 0, 10 * n1(t) * sp(t)])
+    drips(a, 0.5, 14)
+    tail3(a, 0.45, 26, 8, lag=0.4)
+    A[P + "transform"] = finish(a)
+
+    # ---- untransform (modelo monstruoso): se encoge, convulsiona y se repliega
+    L = 3.5
+    a = g.Anim(L, loop="hold_on_last_frame", dt=0.05)
+
+    def shrink(t):
+        return 1 - 0.84 * (0.3 * sstep(0.2, 1.2, t) + 0.7 * sstep(1.2, 3.0, t))
+
+    def fold(t):                     # 0 = desplegada, 1 = encogida
+        return sstep(0.6, 3.0, t)
+
+    def sp2(t):
+        return sstep(0, 0.5, t) * (1 - sstep(2.6, 3.4, t))
+    a.chan("root", "scale", lambda t: [shrink(t)] * 3)
+    R(a, "arm_l", lambda t: [-45 * fold(t) + 12 * n1(t) * sp2(t), 0, 0])
+    R(a, "arm_r", lambda t: [-45 * fold(t) - 12 * n2(t) * sp2(t), 0, 0])
+    R(a, "forearm_l", lambda t: [60 * fold(t), 0, 0])
+    R(a, "forearm_r", lambda t: [60 * fold(t), 0, 0])
+    R(a, "thigh_l", lambda t: [-40 * fold(t) + 10 * n2(t) * sp2(t), 0, 0])
+    R(a, "thigh_r", lambda t: [-40 * fold(t) - 10 * n1(t) * sp2(t), 0, 0])
+    R(a, "shin_l", lambda t: [50 * fold(t), 0, 0])
+    R(a, "shin_r", lambda t: [50 * fold(t), 0, 0])
+    for nm in ("arm_l", "arm_r", "thigh_l", "thigh_r"):
+        a.chan(nm, "scale", lambda t: [1, 1 - 0.45 * sstep(0.5, 3.0, t), 1])
+    for nm in ("neck1", "neck2"):
+        a.chan(nm, "scale", lambda t: [1, 1, 1 - 0.45 * sstep(0.8, 3.0, t)])
+    a.rot("spine", lambda t: [14 * fold(t) + 6 * n2(t) * sp2(t), 0, 14 * n1(t) * sp2(t)])
+    a.rot("chest", lambda t: [-12 * sstep(0, 0.4, t) * (1 - sstep(0.9, 1.4, t)), 10 * n2(t) * sp2(t), 8 * n1(t) * sp2(t)])
+    R(a, "neck1", lambda t: [25 * fold(t) + 8 * n1(t) * sp2(t), 14 * n2(t) * sp2(t), 0])
+    R(a, "neck2", lambda t: [25 * fold(t), 12 * n1(t) * sp2(t), 0])
+    R(a, "head", lambda t: [30 * fold(t) - 24 * sstep(0, 0.4, t) * (1 - sstep(0.9, 1.4, t)) + 10 * n2(t) * sp2(t),
+                            26 * n1(t) * sp2(t), 8 * n2(t) * sp2(t)])
+    a.rot("jaw", lambda t: [22 + 44 * sstep(0.0, 0.4, t) * (1 - sstep(0.7, 1.2, t)) - 22 * sstep(1.2, 2.2, t), 0, 0])
+    drips(a, 0.5, 14)
+    tail3(a, 0.45, 26, 8, lag=0.4)
+    A[P + "untransform"] = finish(a)
 
     return {"format_version": "1.8.0", "animations": {k: v.to_json() for k, v in A.items()}}
 

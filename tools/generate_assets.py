@@ -62,6 +62,11 @@ bone("head", "body", [0, 6.4, -6.6], [
     ("whisker_r2", [-5.1, 5.9, -12.9], [3.2, 0.1, 0.1], "whisker"),
 ])
 
+# mandibula inferior pequena: invisible cerrada, se abre en la transformacion
+bone("jaw", "head", [0, 5.3, -10.4], [
+    ("chin", [-1.5, 4.3, -12.7], [3.0, 1.0, 2.6], "muzzle"),
+])
+
 bone("ear_l", "head", [2.6, 9.3, -8.2], [
     ("ear_l", [1.9, 9.2, -8.7], [1.5, 1.3, 0.9], "ear"),
 ])
@@ -485,6 +490,11 @@ class Anim:
         return {"loop": self.loop, "animation_length": self.length, "bones": self.bones}
 
 
+def smooth_np(a, b, x):
+    u = min(1.0, max(0.0, (x - a) / (b - a)))
+    return u * u * (3 - 2 * u)
+
+
 def s(t, period, phase=0.0):
     return math.sin(TAU * t / period + phase)
 
@@ -646,6 +656,73 @@ def make_animations():
     a.rot("ear_r", lambda t: [0, 0, -12 * s(t, L / 4)])
     A["animation.otter.shake"] = a
 
+
+    # ---- suspicious: inmovil, cabeza inclinada de forma antinatural, temblando
+    L = 4.0
+    a = Anim(L, dt=0.05)
+    a.pos("body", lambda t: [0.07 * s(t, 0.22), 0.08 * s(t, 0.6), 0])
+    a.rot("body", lambda t: [0, 0, 1.2 * s(t, 0.22, 1.0)])
+    a.rot("head", lambda t: [-3 + 2 * s(t, 0.3), 16 + 9 * max(0, s(t, 4.0, 1.0)) ** 3, 38 + 4 * s(t, 0.2)])
+    a.rot("ear_l", lambda t: [0, 0, 22])
+    a.rot("ear_r", lambda t: [0, 0, -22])
+    a.rot("jaw", lambda t: [3 * abs(s(t, 0.4)), 0, 0])
+    for name in ("leg_fl", "leg_fr", "leg_bl", "leg_br"):
+        a.rot(name, lambda t: [4 * s(t, 0.22, 0.5), 0, 0])
+    a.rot("tail1", lambda t: [-10, 1.5 * s(t, 0.25), 0])
+    a.rot("tail2", lambda t: [-8, 2 * s(t, 0.25, 0.4), 0])
+    a.rot("tail3", lambda t: [-6, 2.5 * s(t, 0.25, 0.8), 0])
+    A["animation.otter.suspicious"] = a
+
+    # ---- transform (fase A, modelo normal): se detiene, tiembla, la cabeza se tuerce,
+    #      la mandibula se abre, la columna se arquea y el cuerpo se deforma
+    L = 3.5
+    a = Anim(L, loop="hold_on_last_frame", dt=0.05)
+
+    def ss(a_, b_, t):
+        return float(smooth_np(a_, b_, t))
+
+    def trem(t):
+        return s(t, 0.11) + 0.5 * s(t, 0.07, 1.0)
+
+    def envs(t):
+        return ss(0.3, 1.2, t) * (1 - 0.4 * ss(2.4, 3.2, t))
+    arch = lambda t: ss(1.8, 3.0, t)
+    a.pos("body", lambda t: [0.3 * trem(t) * envs(t), 1.2 * arch(t) * 0 + 0.1 * trem(t) * envs(t), 0])
+    a.rot("body", lambda t: [-20 * arch(t) + 2 * trem(t) * envs(t), 4 * trem(t) * envs(t), 3 * trem(t) * envs(t)])
+    a.chan("body", "scale", lambda t: [1, 1 - 0.1 * arch(t), 1 + 0.25 * arch(t)])
+    a.pos("root", lambda t: [0, 1.8 * ss(1.8, 3.2, t), 0])
+    a.rot("head", lambda t: [-16 * ss(2.6, 3.2, t) + 3 * trem(t) * envs(t),
+                             38 * ss(0.9, 1.6, t) - 70 * ss(2.3, 2.45, t) + 5 * trem(t) * envs(t),
+                             55 * ss(0.8, 1.3, t) - 25 * ss(2.4, 2.6, t) + 6 * trem(t) * envs(t)])
+    a.rot("jaw", lambda t: [58 * ss(1.4, 2.4, t) + 4 * trem(t) * ss(1.6, 2.6, t), 0, 0])
+    a.rot("ear_l", lambda t: [0, 0, 32 * ss(0.8, 1.4, t)])
+    a.rot("ear_r", lambda t: [0, 0, -32 * ss(0.8, 1.4, t)])
+    for name, ph in (("leg_fl", 0.0), ("leg_fr", 1.3), ("leg_bl", 2.1), ("leg_br", 0.7)):
+        a.rot(name, lambda t, ph=ph: [14 * ss(1.6, 2.8, t) + 6 * s(t, 0.1, ph) * envs(t), 0, 0])
+        a.chan(name, "scale", lambda t: [1, 1 + 0.5 * ss(1.8, 3.2, t), 1])
+    a.chan("tail1", "scale", lambda t: [1, 1, 1 + 0.6 * ss(1.8, 3.2, t)])
+    a.rot("tail1", lambda t: [10 * ss(1.8, 3.0, t), 14 * trem(t) * envs(t), 0])
+    a.rot("tail2", lambda t: [14 * ss(1.8, 3.0, t), 22 * trem(t) * envs(t), 0])
+    a.rot("tail3", lambda t: [18 * ss(1.8, 3.0, t), 30 * trem(t) * envs(t), 0])
+    A["animation.otter.transform"] = a
+
+    # ---- untransform (modelo normal): vuelve a la normalidad, temblando y relajandose
+    L = 2.0
+    a = Anim(L, loop="hold_on_last_frame", dt=0.05)
+
+    def decay(t):
+        return 1 - smooth_np(0.0, 1.6, t)
+    a.pos("body", lambda t: [0.25 * s(t, 0.1) * decay(t), -1.6 * decay(t) ** 2, 0])
+    a.rot("body", lambda t: [6 * decay(t), 3 * s(t, 0.1, 1.0) * decay(t), 3 * s(t, 0.12) * decay(t)])
+    a.rot("head", lambda t: [34 * decay(t) ** 2, 22 * s(t, 0.5) * decay(t), 14 * decay(t)])
+    a.rot("jaw", lambda t: [26 * decay(t) ** 2, 0, 0])
+    for name in ("leg_fl", "leg_fr", "leg_bl", "leg_br"):
+        a.rot(name, lambda t: [-16 * decay(t) ** 2, 0, 0])
+    a.rot("tail1", lambda t: [-6 * decay(t), 10 * s(t, 0.2) * decay(t), 0])
+    a.rot("tail2", lambda t: [-6 * decay(t), 14 * s(t, 0.2, 0.5) * decay(t), 0])
+    a.rot("tail3", lambda t: [-6 * decay(t), 18 * s(t, 0.2, 1.0) * decay(t), 0])
+    A["animation.otter.untransform"] = a
+
     return {
         "format_version": "1.8.0",
         "animations": {k: v.to_json() for k, v in A.items()},
@@ -654,12 +731,34 @@ def make_animations():
 
 # ----------------------------------------------------------------------------
 
+def make_corrupt(img):
+    """Version 'corrompida' del pelaje (fase intermedia de la transformacion)."""
+    out = img.copy()
+    rgb = img[..., :3].astype(np.float64)
+    lum = rgb.mean(axis=-1, keepdims=True)
+    dark = (rgb * 0.40 + lum * 0.12) * np.array([0.85, 0.92, 1.15])
+    h, w = img.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
+    zeros = np.zeros_like(xx)
+    veins = np.abs(vnoise(xx * 0.05, yy * 0.05, zeros, 91) - 0.5) < 0.018
+    dark = np.where(veins[..., None], np.array([96.0, 24.0, 52.0]), dark)
+    patch = vnoise(xx * 0.03, yy * 0.03, zeros, 92) > 0.68
+    dark = np.where(patch[..., None], dark * 0.6 + np.array([40.0, 34.0, 40.0]) * 0.4, dark)
+    out[..., :3] = np.clip(dark, 0, 255).astype(np.uint8)
+    return out
+
+
 def main():
     os.makedirs(os.path.join(ASSETS, "geo"), exist_ok=True)
     os.makedirs(os.path.join(ASSETS, "animations"), exist_ok=True)
     os.makedirs(os.path.join(ASSETS, "textures", "entity"), exist_ok=True)
     img, geo = build_texture_and_geo()
     Image.fromarray(img, "RGBA").save(os.path.join(ASSETS, "textures", "entity", "otter.png"), optimize=True)
+    corrupt = make_corrupt(img)
+    Image.fromarray(corrupt, "RGBA").save(os.path.join(ASSETS, "textures", "entity", "otter_corrupt.png"), optimize=True)
+    cglow = np.zeros((TEX_SIZE, TEX_SIZE, 4), dtype=np.uint8)
+    cglow[0, 0] = (0, 0, 0, 255)
+    Image.fromarray(cglow, "RGBA").save(os.path.join(ASSETS, "textures", "entity", "otter_corrupt_glowmask.png"))
     # mascara de brillo de la nutria normal: GeckoLib exige al menos un pixel NO transparente.
     # (0,0) no esta usado por ninguna cara y el negro emisivo no se ve.
     glow = np.zeros((TEX_SIZE, TEX_SIZE, 4), dtype=np.uint8)

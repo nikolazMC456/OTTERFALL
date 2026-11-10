@@ -9,5 +9,9 @@
   "subtitles.otterfall.entity.otter_horror.death": "La nutria abismal muere",
   "subtitles.otterfall.entity.otter_horror.screech": "La nutria abismal chilla",
   "subtitles.otterfall.entity.otter_horror.jaw": "Una mandíbula chasquea",
-  "subtitles.otterfall.entity.otter_horror.step": "Extremidades que se arrastran"
+  "subtitles.otterfall.entity.otter_horror.step": "Extremidades que se arrastran",
+  "subtitles.otterfall.entity.otter.suspicious": "La nutria gimotea de forma extraña",
+  "subtitles.otterfall.entity.otter.transform_crack": "Crujen huesos",
+  "subtitles.otterfall.entity.otter_horror.transform_roar": "La nutria abismal ruge",
+  "subtitles.otterfall.entity.otter_horror.laugh": "Risa distorsionada"
 }
