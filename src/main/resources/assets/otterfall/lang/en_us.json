@@ -13,5 +13,8 @@
   "subtitles.otterfall.entity.otter.suspicious": "Otter whimpers strangely",
   "subtitles.otterfall.entity.otter.transform_crack": "Bones crack",
   "subtitles.otterfall.entity.otter_horror.transform_roar": "Abyssal otter roars",
-  "subtitles.otterfall.entity.otter_horror.laugh": "Distorted laughter"
+  "subtitles.otterfall.entity.otter_horror.laugh": "Distorted laughter",
+  "subtitles.otterfall.entity.otter_frenzy.scream": "Otter screams in fury",
+  "subtitles.otterfall.entity.otter_frenzy.breath": "Frenzied otter pants",
+  "subtitles.otterfall.entity.otter_frenzy.attack": "Frenzied otter mauls"
 }

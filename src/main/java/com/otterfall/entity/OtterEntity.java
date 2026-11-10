@@ -3,11 +3,23 @@ package com.otterfall.entity;
 import com.otterfall.entity.ai.FormGate;
 import com.otterfall.entity.ai.OtterFreezeGoal;
 import com.otterfall.entity.ai.OtterHorrorActionGoal;
+import com.otterfall.entity.ai.OtterBreakBlocksGoal;
+import com.otterfall.entity.ai.OtterHuntTravelGoal;
 import com.otterfall.entity.ai.OtterIdleActionGoal;
+import com.otterfall.entity.ai.OtterVengeanceTargetGoal;
+import com.otterfall.hunt.OtterHuntData;
+import com.otterfall.hunt.OtterHuntManager;
 import com.otterfall.entity.ai.OtterSuspiciousGoal;
 import com.otterfall.registry.ModEntities;
 import com.otterfall.registry.ModSounds;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -48,12 +60,14 @@ import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.ForgeMod;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
@@ -84,6 +98,12 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final EntityDataAccessor<Integer> DATA_TRANSFORM =
             SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.INT);
 
+    private static final EntityDataAccessor<Boolean> DATA_FRENZY_FORM =
+            SynchedEntityData.defineId(OtterEntity.class, EntityDataSerializers.BOOLEAN);
+
+    private static final UUID FRENZY_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a05");
+    private static final UUID FRENZY_SPEED_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a06");
+    private static final UUID FRENZY_FOLLOW_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a07");
     private static final UUID HORROR_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a01");
     private static final UUID HORROR_HEALTH_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a03");
     private static final UUID HORROR_KNOCKBACK_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a04");
@@ -98,6 +118,8 @@ public class OtterEntity extends Animal implements GeoEntity {
     private static final RawAnimation ANIM_SUSPICIOUS = RawAnimation.begin().thenLoop("animation.otter.suspicious");
     private static final RawAnimation ANIM_TRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter.transform");
     private static final RawAnimation ANIM_UNTRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter.untransform");
+    private static final RawAnimation ANIM_TRANSFORM_F = RawAnimation.begin().thenPlayAndHold("animation.otter.transform_frenzy");
+    private static final RawAnimation H_TRANSFORM_F = RawAnimation.begin().thenPlayAndHold("animation.otter_horror.transform_frenzy");
     private static final RawAnimation H_TRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter_horror.transform");
     private static final RawAnimation H_UNTRANSFORM = RawAnimation.begin().thenPlayAndHold("animation.otter_horror.untransform");
     // forma monstruosa
@@ -109,6 +131,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final OtterTransformationController transformation = new OtterTransformationController(this);
+    private final OtterMemory memory = new OtterMemory();
 
     private boolean wasInWater = false;
     private boolean wantsShake = false;
@@ -154,6 +177,36 @@ public class OtterEntity extends Animal implements GeoEntity {
         return getOtterState() == OtterState.NORMAL;
     }
 
+    public boolean isFrenzy() {
+        return getOtterState() == OtterState.FRENZY;
+    }
+
+    /** Monstruo "normal": sin rencor activo (el frenesi tiene su propia IA). */
+    public boolean isPlainHorror() {
+        return getOtterState() == OtterState.HORROR;
+    }
+
+    public OtterMemory memory() {
+        return memory;
+    }
+
+    public boolean isFrenzyForm() {
+        return this.entityData.get(DATA_FRENZY_FORM);
+    }
+
+    public void setFrenzyForm(boolean frenzy) {
+        this.entityData.set(DATA_FRENZY_FORM, frenzy);
+    }
+
+    /** Fin de la fase A (modelo normal) segun la variante de transformacion. */
+    public int transformPhaseA() {
+        return isFrenzyForm() ? OtterTransformationController.FRENZY_PHASE_A : OtterTransformationController.PHASE_A;
+    }
+
+    public int transformTotal() {
+        return isFrenzyForm() ? OtterTransformationController.FRENZY_TOTAL : OtterTransformationController.TRANSFORM_TOTAL;
+    }
+
     public boolean isSuspicious() {
         return getOtterState() == OtterState.SUSPICIOUS;
     }
@@ -176,7 +229,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
         int t = getTransformTicks();
         if (s == OtterState.TRANSFORMING) {
-            return t >= OtterTransformationController.PHASE_A;
+            return t >= transformPhaseA();
         }
         if (s == OtterState.RETURNING_TO_NORMAL) {
             return t < OtterTransformationController.RETURN_A;
@@ -187,8 +240,8 @@ public class OtterEntity extends Animal implements GeoEntity {
     /** Pelaje oscurecido que aparece a mitad de la fase A de la transformacion. */
     public boolean shouldUseCorruptTexture() {
         return getOtterState() == OtterState.TRANSFORMING
-                && getTransformTicks() >= 25
-                && getTransformTicks() < OtterTransformationController.PHASE_A;
+                && getTransformTicks() >= (int) (transformPhaseA() * 0.36F)
+                && getTransformTicks() < transformPhaseA();
     }
 
     public boolean isLocked() {
@@ -227,11 +280,17 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
     }
 
-    private void applyFormAttributes(boolean horror) {
+    private void applyFormAttributes(OtterState state, boolean wasHorror) {
+        boolean horror = state.usesHorrorModel();
+        boolean frenzy = state == OtterState.FRENZY;
         setModifier(Attributes.ATTACK_DAMAGE, HORROR_DAMAGE_ID, "Horror damage", 8.0D, horror);
         setModifier(Attributes.MAX_HEALTH, HORROR_HEALTH_ID, "Horror health", 70.0D, horror);
         setModifier(Attributes.KNOCKBACK_RESISTANCE, HORROR_KNOCKBACK_ID, "Horror knockback", 0.7D, horror);
-        if (horror) {
+        // frenesi: mas dano, mas velocidad y un radio de rastreo enorme
+        setModifier(Attributes.ATTACK_DAMAGE, FRENZY_DAMAGE_ID, "Frenzy damage", 5.0D, frenzy);
+        setModifier(Attributes.MOVEMENT_SPEED, FRENZY_SPEED_ID, "Frenzy speed", 0.05D, frenzy);
+        setModifier(Attributes.FOLLOW_RANGE, FRENZY_FOLLOW_ID, "Frenzy follow range", 44.0D, frenzy);
+        if (horror && !wasHorror) {
             this.setHealth(this.getMaxHealth());
         } else if (this.getHealth() > this.getMaxHealth()) {
             this.setHealth(this.getMaxHealth());
@@ -259,9 +318,13 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.goalSelector.addGoal(5, new FormGate(new OtterIdleActionGoal(this), this::isNormalForm));
         // ---- forma monstruosa
         this.goalSelector.addGoal(2, new FormGate(new MeleeAttackGoal(this, 1.3D, false), this::isHorrorForm));
-        this.goalSelector.addGoal(3, new FormGate(new OtterHorrorActionGoal(this), this::isHorrorForm));
+        this.goalSelector.addGoal(3, new FormGate(new OtterHorrorActionGoal(this), this::isPlainHorror));
         this.targetSelector.addGoal(1, new FormGate(
-                new NearestAttackableTargetGoal<>(this, Player.class, true), this::isHorrorForm));
+                new NearestAttackableTargetGoal<>(this, Player.class, true), this::isPlainHorror));
+        // ---- frenesi: venganza persistente
+        this.targetSelector.addGoal(0, new FormGate(new OtterVengeanceTargetGoal(this), this::isFrenzy));
+        this.goalSelector.addGoal(1, new FormGate(new OtterHuntTravelGoal(this), this::isFrenzy));
+        this.goalSelector.addGoal(4, new FormGate(new OtterBreakBlocksGoal(this), this::isFrenzy));
         // ---- comunes (solo en formas estables)
         this.goalSelector.addGoal(6, new FormGate(new RandomSwimmingGoal(this, 1.0D, 80), this::canRoam));
         this.goalSelector.addGoal(7, new FormGate(new RandomStrollGoal(this, 0.9D, 120), this::canRoam));
@@ -289,8 +352,121 @@ public class OtterEntity extends Animal implements GeoEntity {
         boolean hit = super.doHurtTarget(target);
         if (hit && isHorrorForm()) {
             playAction(OtterAction.HORROR_BITE, 12);
+            if (isFrenzy()) {
+                this.playSound(ModSounds.FRENZY_ATTACK.get(), 1.0F, 0.8F + this.random.nextFloat() * 0.2F);
+            }
         }
         return hit;
+    }
+
+    /** Memoria de agravios: cualquier jugador que la hiera queda grabado (UUID) de forma permanente. */
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        if (!this.level().isClientSide && source.getEntity() instanceof ServerPlayer player
+                && amount > 0.0F && !this.isInvulnerableTo(source)) {
+            this.memory.remember(player.getUUID());
+            refreshRegistry();
+            if (isPlainHorror()) {          // golpeada de noche: salta directamente al frenesi
+                this.setOtterState(OtterState.FRENZY);
+                this.playSound(ModSounds.FRENZY_SCREAM.get(), 2.0F, 1.0F);
+                announceFrenzy();
+            }
+        }
+        return super.hurt(source, amount);
+    }
+
+    /** Al morir, las nutrias cercanas heredan sus agravios (la colonia recuerda). */
+    @Override
+    public void die(DamageSource source) {
+        if (!this.level().isClientSide) {
+            if (!this.memory.isEmpty()) {
+                for (OtterEntity other : this.level().getEntitiesOfClass(OtterEntity.class,
+                        this.getBoundingBox().inflate(48.0D), o -> o != this && o.isAlive())) {
+                    other.memory.inherit(this.memory);
+                    if (other.isPlainHorror()) {
+                        other.setOtterState(OtterState.FRENZY);
+                        other.playSound(ModSounds.FRENZY_SCREAM.get(), 2.0F, 1.0F);
+                        other.announceFrenzy();
+                    }
+                    other.refreshRegistry();
+                }
+            }
+            MinecraftServer server = this.level().getServer();
+            if (server != null) {
+                OtterHuntData.get(server).remove(this.getUUID());
+            }
+        }
+        super.die(source);
+    }
+
+    private void refreshRegistry() {
+        MinecraftServer server = this.level().getServer();
+        if (server != null && !this.level().isClientSide) {
+            OtterHuntData.get(server).update(this);
+        }
+    }
+
+    /** Muestra "OTTER FRENZY" a los jugadores que esta nutria quiere matar. */
+    public void announceFrenzy() {
+        MinecraftServer server = this.level().getServer();
+        if (server == null) {
+            return;
+        }
+        for (UUID id : this.memory.ids()) {
+            ServerPlayer p = server.getPlayerList().getPlayer(id);
+            if (p != null) {
+                p.connection.send(new ClientboundSetTitlesAnimationPacket(10, 70, 25));
+                p.connection.send(new ClientboundSetSubtitleTextPacket(
+                        Component.literal("FRANKLY UNFORGIVING").withStyle(ChatFormatting.DARK_RED)));
+                p.connection.send(new ClientboundSetTitleTextPacket(
+                        Component.literal("OTTER FRENZY").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)));
+            }
+        }
+    }
+
+    /** Venganza cumplida: el rencor contra ese jugador se salda. */
+    public void onTargetKilled(ServerPlayer player) {
+        this.memory.forget(player.getUUID());
+        this.setTarget(null);
+        this.playSound(ModSounds.HORROR_LAUGH.get(), 2.0F, 0.9F);
+        if (this.memory.isEmpty() && isFrenzy()) {
+            this.setOtterState(OtterState.HORROR);
+        }
+        refreshRegistry();
+    }
+
+    /** Persecucion entre dimensiones: reaparece en la dimension del objetivo conservando todo su estado. */
+    public void transferTo(ServerLevel dest, Vec3 pos) {
+        CompoundTag tag = new CompoundTag();
+        this.saveWithoutId(tag);
+        this.discard();
+        OtterEntity copy = ModEntities.OTTER.get().create(dest);
+        if (copy != null) {
+            copy.load(tag);
+            copy.moveTo(pos.x, pos.y, pos.z, this.getYRot(), 0.0F);
+            dest.addFreshEntity(copy);
+            copy.refreshRegistry();
+        }
+    }
+
+    /** Mantiene cargada su zona mientras alguno de sus enemigos este conectado y ella este activa. */
+    private void huntSupport() {
+        if (this.tickCount % 20 != 0 || this.memory.isEmpty()) {
+            return;
+        }
+        MinecraftServer server = this.level().getServer();
+        if (server == null) {
+            return;
+        }
+        if (this.tickCount % 100 == 0) {
+            OtterHuntData.get(server).update(this);
+        }
+        OtterState s = getOtterState();
+        if ((s == OtterState.SUSPICIOUS || s == OtterState.TRANSFORMING || s == OtterState.FRENZY)
+                && this.memory.hasOnlineTarget(server) && this.level() instanceof ServerLevel sl) {
+            ChunkPos cp = this.chunkPosition();
+            sl.getChunkSource().addRegionTicket(OtterHuntManager.HUNT_TICKET, cp, 3, cp);
+        }
     }
 
     /** Reproduce una accion durante un numero fijo de ticks (solo servidor). */
@@ -312,6 +488,7 @@ public class OtterEntity extends Animal implements GeoEntity {
                 this.setAction(OtterAction.NONE);
             }
             this.transformation.tick();
+            this.huntSupport();
         }
     }
 
@@ -338,6 +515,7 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.entityData.define(DATA_ACTION, 0);
         this.entityData.define(DATA_STATE, 0);
         this.entityData.define(DATA_TRANSFORM, 0);
+        this.entityData.define(DATA_FRENZY_FORM, false);
     }
 
     public OtterAction getAction() {
@@ -361,9 +539,10 @@ public class OtterEntity extends Animal implements GeoEntity {
     }
 
     public void setOtterState(OtterState state) {
+        boolean wasHorror = getOtterState().usesHorrorModel();
         this.entityData.set(DATA_STATE, state.ordinal());
         if (!this.level().isClientSide) {
-            applyFormAttributes(state.usesHorrorModel());
+            applyFormAttributes(state, wasHorror);
             this.actionTicks = 0;
             this.setTransformTicks(0);
             this.setAction(OtterAction.NONE);
@@ -379,21 +558,27 @@ public class OtterEntity extends Animal implements GeoEntity {
         tag.putInt("OtterState", getOtterState().ordinal());
         tag.putInt("OtterTransform", getTransformTicks());
         tag.putBoolean("OtterLocked", locked);
+        tag.putBoolean("OtterFrenzyForm", isFrenzyForm());
+        tag.put("OtterMemory", memory.save());
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        float health = this.getHealth();
         setOtterState(OtterState.byId(tag.getInt("OtterState")));
+        this.setHealth(Math.min(health, this.getMaxHealth()));
         setTransformTicks(tag.getInt("OtterTransform"));
         locked = tag.getBoolean("OtterLocked");
+        setFrenzyForm(tag.getBoolean("OtterFrenzyForm"));
+        memory.load(tag.getList("OtterMemory", net.minecraft.nbt.Tag.TAG_COMPOUND));
     }
 
     // ------------------------------------------------------------- sonidos
 
     @Override
     public int getAmbientSoundInterval() {
-        return isHorrorForm() ? 200 : 80;
+        return isFrenzy() ? 60 : (isHorrorForm() ? 200 : 80);
     }
 
     @Override
@@ -404,6 +589,9 @@ public class OtterEntity extends Animal implements GeoEntity {
         }
         if (s == OtterState.TRANSFORMING || s == OtterState.RETURNING_TO_NORMAL) {
             return null;
+        }
+        if (s == OtterState.FRENZY) {
+            return ModSounds.FRENZY_BREATH.get();
         }
         return isHorrorForm() ? ModSounds.HORROR_AMBIENT.get() : ModSounds.OTTER_AMBIENT.get();
     }
@@ -437,7 +625,11 @@ public class OtterEntity extends Animal implements GeoEntity {
     private PlayState mainPredicate(AnimationState<OtterEntity> state) {
         OtterState os = getOtterState();
         if (os == OtterState.TRANSFORMING) {
-            return state.setAndContinue(shouldRenderHorrorModel() ? H_TRANSFORM : ANIM_TRANSFORM);
+            boolean f = isFrenzyForm();
+            if (shouldRenderHorrorModel()) {
+                return state.setAndContinue(f ? H_TRANSFORM_F : H_TRANSFORM);
+            }
+            return state.setAndContinue(f ? ANIM_TRANSFORM_F : ANIM_TRANSFORM);
         }
         if (os == OtterState.RETURNING_TO_NORMAL) {
             return state.setAndContinue(shouldRenderHorrorModel() ? H_UNTRANSFORM : ANIM_UNTRANSFORM);

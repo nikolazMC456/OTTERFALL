@@ -27,6 +27,10 @@ public class ModSounds {
     public static final RegistryObject<SoundEvent> TRANSFORM_ROAR = register("entity.otter_horror.transform_roar");
     public static final RegistryObject<SoundEvent> HORROR_LAUGH = register("entity.otter_horror.laugh");
 
+    public static final RegistryObject<SoundEvent> FRENZY_SCREAM = register("entity.otter_frenzy.scream");
+    public static final RegistryObject<SoundEvent> FRENZY_BREATH = register("entity.otter_frenzy.breath");
+    public static final RegistryObject<SoundEvent> FRENZY_ATTACK = register("entity.otter_frenzy.attack");
+
     private static RegistryObject<SoundEvent> register(String name) {
         return SOUNDS.register(name, () -> SoundEvent.createVariableRangeEvent(new ResourceLocation(Otterfall.MODID, name)));
     }

@@ -13,5 +13,8 @@
   "subtitles.otterfall.entity.otter.suspicious": "La nutria gimotea de forma extraña",
   "subtitles.otterfall.entity.otter.transform_crack": "Crujen huesos",
   "subtitles.otterfall.entity.otter_horror.transform_roar": "La nutria abismal ruge",
-  "subtitles.otterfall.entity.otter_horror.laugh": "Risa distorsionada"
+  "subtitles.otterfall.entity.otter_horror.laugh": "Risa distorsionada",
+  "subtitles.otterfall.entity.otter_frenzy.scream": "La nutria chilla de furia",
+  "subtitles.otterfall.entity.otter_frenzy.breath": "La nutria frenética jadea",
+  "subtitles.otterfall.entity.otter_frenzy.attack": "La nutria frenética desgarra"
 }

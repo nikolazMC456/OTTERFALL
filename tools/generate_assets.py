@@ -489,6 +489,28 @@ class Anim:
     def to_json(self):
         return {"loop": self.loop, "animation_length": self.length, "bones": self.bones}
 
+    def to_json_scaled(self, ts, amp):
+        """Copia con el tiempo escalado por ts y las rotaciones por amp (variante 'frenesi', mas rapida y violenta)."""
+        bones = {}
+        for b, chans in self.bones.items():
+            nb = {}
+            for ch, keys in chans.items():
+                nk = {}
+                for k, v in keys.items():
+                    nt = str(round(float(k) * ts, 4))
+                    nk[nt] = [round(c * amp, 4) for c in v] if ch == "rotation" else v
+                nb[ch] = nk
+            bones[b] = nb
+        return {"loop": self.loop, "animation_length": round(self.length * ts, 4), "bones": bones}
+
+
+class ScaledAnim:
+    def __init__(self, anim, ts, amp):
+        self.anim, self.ts, self.amp = anim, ts, amp
+
+    def to_json(self):
+        return self.anim.to_json_scaled(self.ts, self.amp)
+
 
 def smooth_np(a, b, x):
     u = min(1.0, max(0.0, (x - a) / (b - a)))
@@ -705,6 +727,7 @@ def make_animations():
     a.rot("tail2", lambda t: [14 * ss(1.8, 3.0, t), 22 * trem(t) * envs(t), 0])
     a.rot("tail3", lambda t: [18 * ss(1.8, 3.0, t), 30 * trem(t) * envs(t), 0])
     A["animation.otter.transform"] = a
+    A["animation.otter.transform_frenzy"] = ScaledAnim(a, 2.0 / 3.5, 1.35)   # 2 s, mas violenta
 
     # ---- untransform (modelo normal): vuelve a la normalidad, temblando y relajandose
     L = 2.0

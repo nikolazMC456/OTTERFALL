@@ -170,5 +170,50 @@
         "attenuation_distance": 48
       }
     ]
+  },
+  "entity.otter_frenzy.scream": {
+    "subtitle": "subtitles.otterfall.entity.otter_frenzy.scream",
+    "sounds": [
+      {
+        "name": "entity.ghast.scream",
+        "type": "event",
+        "pitch": 0.5,
+        "volume": 1.0
+      },
+      {
+        "name": "entity.ravager.roar",
+        "type": "event",
+        "pitch": 0.4,
+        "volume": 1.2
+      }
+    ]
+  },
+  "entity.otter_frenzy.breath": {
+    "subtitle": "subtitles.otterfall.entity.otter_frenzy.breath",
+    "sounds": [
+      {
+        "name": "entity.warden.heartbeat",
+        "type": "event",
+        "pitch": 1.2,
+        "volume": 0.8
+      },
+      {
+        "name": "entity.ravager.ambient",
+        "type": "event",
+        "pitch": 0.5,
+        "volume": 0.5
+      }
+    ]
+  },
+  "entity.otter_frenzy.attack": {
+    "subtitle": "subtitles.otterfall.entity.otter_frenzy.attack",
+    "sounds": [
+      {
+        "name": "entity.ravager.attack",
+        "type": "event",
+        "pitch": 0.6,
+        "volume": 1.0
+      }
+    ]
   }
 }

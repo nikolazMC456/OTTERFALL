@@ -819,6 +819,7 @@ def make_animations():
     drips(a, 0.5, 14)
     tail3(a, 0.45, 26, 8, lag=0.4)
     A[P + "transform"] = finish(a)
+    A[P + "transform_frenzy"] = g.ScaledAnim(a, 3.5 / 4.5, 1.0)     # 3.5 s, mas rapida y brusca
 
     # ---- untransform (modelo monstruoso): se encoge, convulsiona y se repliega
     L = 3.5
