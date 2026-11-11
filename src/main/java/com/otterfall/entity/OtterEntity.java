@@ -3,9 +3,11 @@ package com.otterfall.entity;
 import com.otterfall.entity.ai.FormGate;
 import com.otterfall.entity.ai.OtterFreezeGoal;
 import com.otterfall.entity.ai.OtterHorrorActionGoal;
+import com.otterfall.entity.ai.GiantPathNavigation;
 import com.otterfall.entity.ai.OtterBreakBlocksGoal;
 import com.otterfall.entity.ai.OtterHuntTravelGoal;
 import com.otterfall.entity.ai.OtterIdleActionGoal;
+import com.otterfall.entity.ai.OtterPursuitGoal;
 import com.otterfall.entity.ai.OtterVengeanceTargetGoal;
 import com.otterfall.hunt.OtterHuntData;
 import com.otterfall.hunt.OtterHuntManager;
@@ -47,14 +49,12 @@ import net.minecraft.world.entity.ai.control.SmoothSwimmingMoveControl;
 import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
-import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.RandomSwimmingGoal;
 import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
-import net.minecraft.world.entity.ai.navigation.AmphibiousPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
@@ -103,6 +103,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     private static final UUID FRENZY_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a05");
     private static final UUID FRENZY_SPEED_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a06");
+    private static final UUID HORROR_FOLLOW_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a09");
     private static final UUID FRENZY_FOLLOW_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a07");
     private static final UUID HORROR_SPEED_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a08");
     private static final UUID HORROR_DAMAGE_ID = UUID.fromString("5f3c1d1e-6b0a-4f5e-9c11-0a7d2e9b8a01");
@@ -292,7 +293,9 @@ public class OtterEntity extends Animal implements GeoEntity {
         // frenesi: mas dano, mas velocidad y un radio de rastreo enorme
         setModifier(Attributes.ATTACK_DAMAGE, FRENZY_DAMAGE_ID, "Frenzy damage", 5.0D, frenzy);
         setModifier(Attributes.MOVEMENT_SPEED, FRENZY_SPEED_ID, "Frenzy speed", 0.05D, frenzy);
-        setModifier(Attributes.FOLLOW_RANGE, FRENZY_FOLLOW_ID, "Frenzy follow range", 44.0D, frenzy);
+        setModifier(Attributes.FOLLOW_RANGE, HORROR_FOLLOW_ID, "Horror follow range", 32.0D, horror);       // 20 -> 52
+        setModifier(Attributes.FOLLOW_RANGE, FRENZY_FOLLOW_ID, "Frenzy follow range", 28.0D, frenzy);       // 52 -> 80
+        this.setMaxUpStep(horror ? 2.1F : 1.0F);                                                              // sube escalones de 2 bloques
         if (horror && !wasHorror) {
             this.setHealth(this.getMaxHealth());
         } else if (this.getHealth() > this.getMaxHealth()) {
@@ -304,7 +307,7 @@ public class OtterEntity extends Animal implements GeoEntity {
 
     @Override
     protected PathNavigation createNavigation(Level level) {
-        return new AmphibiousPathNavigation(this, level);
+        return new GiantPathNavigation(this, level);
     }
 
     @Override
@@ -320,10 +323,10 @@ public class OtterEntity extends Animal implements GeoEntity {
         this.goalSelector.addGoal(4, new FormGate(new FollowParentGoal(this, 1.1D), this::isNormalForm));
         this.goalSelector.addGoal(5, new FormGate(new OtterIdleActionGoal(this), this::isNormalForm));
         // ---- forma monstruosa
-        this.goalSelector.addGoal(2, new FormGate(new MeleeAttackGoal(this, 1.3D, false), this::isHorrorForm));
+        this.goalSelector.addGoal(2, new FormGate(new OtterPursuitGoal(this, 1.3D), this::isHorrorForm));
         this.goalSelector.addGoal(3, new FormGate(new OtterHorrorActionGoal(this), this::isPlainHorror));
         this.targetSelector.addGoal(1, new FormGate(
-                new NearestAttackableTargetGoal<>(this, Player.class, true), this::isPlainHorror));
+                new NearestAttackableTargetGoal<>(this, Player.class, 10, false, false, null), this::isPlainHorror));
         // ---- frenesi: venganza persistente
         this.targetSelector.addGoal(0, new FormGate(new OtterVengeanceTargetGoal(this), this::isFrenzy));
         this.goalSelector.addGoal(1, new FormGate(new OtterHuntTravelGoal(this), this::isFrenzy));

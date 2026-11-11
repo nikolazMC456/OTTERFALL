@@ -4,7 +4,7 @@ Mod de Minecraft Java 1.20.1 con Forge 47.x y GeckoLib 4.x.
 
 ## Instalar en el juego
 Necesitas DOS archivos en la carpeta `mods`:
-1. `otterfall-0.4.1.jar` (el que compila GitHub Actions)
+1. `otterfall-0.4.2.jar` (el que compila GitHub Actions)
 2. GeckoLib para Forge 1.20.1 (CurseForge o Modrinth)
 
 ## Ciclo de la nutria (solo en dimensiones con dia y noche)
@@ -25,6 +25,15 @@ Las crias no se transforman.
   pantanos y playas (peso 30; vacas 8, ovejas 12, cerdos 10) y, aun mas, en rios (peso 45).
 - La Nutria Abismal suelta arena de almas (3-6, +1 por nivel de Botin) y un totem de inmortalidad (15 %).
 - Es mas rapida (+0.04 de velocidad base). Pasos con audio propio (4 variantes).
+
+## Persecucion mas inteligente (v0.4.2)
+- Rango de vision: monstruo 52 bloques (antes 20) y en frenesi 80; detecta al jugador aunque no lo vea.
+- Persecucion propia (sustituye al ataque cuerpo a cuerpo de vanilla): recalcula la ruta cada 4-7 ticks sin
+  pararse, sigue aunque pierda la linea de vista y ataca desde ~2 bloques del borde de su hitbox.
+- Navegacion "permisiva": calcula rutas como si midiera 2x3 (no 3x3.8), asi encuentra camino entre arboles y rocas;
+  sube escalones de 2 bloques. Si se atasca, empuja en linea recta.
+- Rompe bloques mucho mas rapido: hasta 30 cada 3 ticks en cuanto se queda parada, hacia arriba si estas en un
+  tejado y hacia abajo si estas en un sotano (respeta mobGriefing).
 
 ## Memoria y venganza (Fase 4)
 - Cada nutria guarda el UUID de los jugadores que la golpean (y cuantas veces). Se guarda en el NBT de

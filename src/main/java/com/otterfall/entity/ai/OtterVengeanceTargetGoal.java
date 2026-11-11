@@ -8,7 +8,7 @@ import java.util.EnumSet;
 
 /** Frenesi: fija como objetivo al agresor elegido de la memoria cuando esta a distancia de combate. */
 public class OtterVengeanceTargetGoal extends Goal {
-    private static final double COMBAT_RANGE = 56.0D;
+    private static final double COMBAT_RANGE = 72.0D;
     private final OtterEntity otter;
 
     public OtterVengeanceTargetGoal(OtterEntity otter) {

@@ -22,7 +22,7 @@ import java.util.EnumSet;
  * En otra dimension espera 10 s y reaparece cerca del jugador (sin caer encima de el).
  */
 public class OtterHuntTravelGoal extends Goal {
-    private static final double NEAR = 52.0D;
+    private static final double NEAR = 72.0D;
     private static final double STEP = 28.0D;
 
     private final OtterEntity otter;
@@ -66,7 +66,9 @@ public class OtterHuntTravelGoal extends Goal {
 
     @Override
     public void tick() {
-        if (++timer < 20) {
+        timer++;
+        // no esperar entre tramos: si ya llego al punto (o se paro), pide el siguiente enseguida
+        if (timer < 20 && !(timer >= 5 && otter.getNavigation().isDone())) {
             return;
         }
         timer = 0;
